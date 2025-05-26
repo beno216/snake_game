@@ -1,3 +1,3 @@
 export default {
-  base: '/hra_snake/',
+  base: '/snake_game/',
 }
