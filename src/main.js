@@ -8,10 +8,8 @@
       document.addEventListener("keydown", keyPush);
 
       //img
-      const appleImg = new Image();
-      appleImg.src = "/img/Apple.png";
-      const snake_headImg = new Image();
-      snake_headImg.src = "/img/snake_head.png";
+     appleImg.src = import.meta.env.BASE_URL + "img/apple.png";
+     snake_headImg.src = import.meta.env.BASE_URL + "img/snake_head.png";
       //canvas
       const canvas = document.querySelector('canvas');
       const title = document.querySelector('h1');
