@@ -8,8 +8,10 @@
       document.addEventListener("keydown", keyPush);
 
       //img
-     const appleImg = import.meta.env.BASE_URL + "img/apple.png";
-     const snake_headImg = import.meta.env.BASE_URL + "img/snake_head.png";
+      const appleImg = new Image();
+       appleImg.src = "img/apple.png";
+      const snake_headImg = new Image();
+       snake_headImg.src = "img/snake_head.png";
       //canvas
       const canvas = document.querySelector('canvas');
       const title = document.querySelector('h1');
@@ -63,61 +65,161 @@
           }
         }
 
+        let walls = []; // pole múrov namiesto jedného wallPos
+
+         const wallDuration = 40;
+         const wallCooldown = 30;
+          let wallTimer = 0;
+
         
 
 
       // Loop
       function gameLoop() {
-  if (gameIsRunning) {
-    if (!isPaused) {
-      moveStuff();
-    }
-      drawStuff();
+       if (gameIsRunning) {
+         if (!isPaused) {
+           moveStuff();
+           handleWallTimer();
+           }
+            drawStuff();
     
-    setTimeout(gameLoop, Math.max(1000 / (fps + score), 100));
-   }
- }
+            setTimeout(gameLoop, Math.max(1000 / (fps + score), 100));
+            }
+          }
 
        /**
         * Move everything
         */
        function moveStuff() {
-         snakePosX += snakeSpeed * velocityX;
-         snakePosY += snakeSpeed * velocityY;
-          // wall collision 
-         if (
-           snakePosX >= canvas.width ||
-           snakePosX < 0 ||
-           snakePosY >= canvas.height ||
-           snakePosY < 0
+        // Pohyb hada
+          snakePosX += snakeSpeed * velocityX;
+          snakePosY += snakeSpeed * velocityY;
+
+        // wrap-around (miznúce múry)
+          if (snakePosX >= canvas.width) snakePosX = 0;
+          if (snakePosX < 0) snakePosX = canvas.width - titleSize;
+          if (snakePosY >= canvas.height) snakePosY = 0;
+          if (snakePosY < 0) snakePosY = canvas.height - titleSize;
+
+         // Kolízia s múrom
+         for (const wall of walls) {
+           if (
+             snakePosX < wall.x + wall.w &&
+             snakePosX + titleSize > wall.x &&
+             snakePosY < wall.y + wall.h &&
+             snakePosY + titleSize > wall.y
            ) {
-           gameIsRunning = false;
-           gameOver();
-           return;
+             gameIsRunning = false;
+             gameOver();
+             return;
            }
+         }
+  
 
-        //Game over
-        tail.forEach((snakePart) => {
-          if (snakePosX === snakePart.x && snakePosY === snakePart.y) {
-            gameIsRunning = false;
-                     gameOver();
-          }
-        });
+  // Kolízia so sebou
+  tail.forEach((snakePart) => {
+    if (snakePosX === snakePart.x && snakePosY === snakePart.y) {
+      gameIsRunning = false;
+      gameOver();
+    }
+  });
 
-        //tail
-        tail.push({ x: snakePosX, y: snakePosY });
+  // Pridaj novú pozíciu do chvosta
+  tail.push({ x: snakePosX, y: snakePosY });
 
-       //food collision
-        if (snakePosX === foodPosX && snakePosY === foodPosY) {
-          score++;
-          title.textContent = score;
-          snakeLength++;
-          resetFood();
+  // Kolízia s jedlom
+  if (snakePosX === foodPosX && snakePosY === foodPosY) {
+    score++;
+    title.textContent = score;
+    snakeLength++;
+    resetFood();
+  }
+
+  // Orezanie chvosta
+  tail = tail.slice(-snakeLength);
+ }
+
+
+// Každý múr bude objekt: {x, y, w, h, timer}
+
+function handleWallTimer() {
+  wallTimer++;
+  if (wallTimer > wallCooldown) {
+    // Pridaj nový múr
+    const newWall = generateWallObject();
+    if (newWall) walls.push(newWall);
+    wallTimer = 0;
+  }
+  // Aktualizuj časovač každého múru a odstráň tie, čo už majú timer > wallDuration
+  walls = walls.filter(wall => {
+    wall.timer++;
+    return wall.timer <= wallDuration;
+  });
+}
+
+// Vytvor nový múr (vracia objekt alebo null ak sa nepodarí)
+function generateWallObject() {
+  const minLen = 2;
+  const maxLen = 6;
+  const wallLen = Math.min(minLen + Math.floor(score / 3), maxLen);
+  const maxTries = 100;
+  let tries = 0;
+  let valid = false;
+  let wx, wy, ww, wh;
+
+  while (!valid && tries < maxTries) {
+    tries++;
+    const horizontal = Math.random() < 0.5;
+    if (horizontal) {
+      ww = wallLen * titleSize;
+      wh = titleSize;
+      wx = Math.floor(Math.random() * (titleCountX - wallLen)) * titleSize;
+      wy = Math.floor(Math.random() * titleCountY) * titleSize;
+    } else {
+      ww = titleSize;
+      wh = wallLen * titleSize;
+      wx = Math.floor(Math.random() * titleCountX) * titleSize;
+      wy = Math.floor(Math.random() * (titleCountY - wallLen)) * titleSize;
+    }
+
+    // Skontroluj kolíziu s hadom a jedlom
+    let collision = false;
+    if (
+      snakePosX < wx + ww &&
+      snakePosX + titleSize > wx &&
+      snakePosY < wy + wh &&
+      snakePosY + titleSize > wy
+    ) collision = true;
+
+    if (!collision) {
+      for (const part of tail) {
+        if (
+          part.x < wx + ww &&
+          part.x + titleSize > wx &&
+          part.y < wy + wh &&
+          part.y + titleSize > wy
+        ) {
+          collision = true;
+          break;
         }
-        
-         //forget earlist parts of snake
-        tail = tail.slice(-snakeLength);
-        }
+      }
+    }
+    if (
+      !collision &&
+      foodPosX < wx + ww &&
+      foodPosX + titleSize > wx &&
+      foodPosY < wy + wh &&
+      foodPosY + titleSize > wy
+    ) collision = true;
+
+    if (!collision) valid = true;
+  }
+  if (valid) return { x: wx, y: wy, w: ww, h: wh, timer: 0 };
+  return null;
+}
+
+
+
 
        /**
         * Draw everything
@@ -134,6 +236,11 @@
          //food
          ctx.drawImage(appleImg, foodPosX, foodPosY, titleSize, titleSize);
        
+          // Múr (prekážka)
+         // Kreslenie múrov (v drawStuff)
+          for (const wall of walls) {
+              rectangle("#333", wall.x, wall.y, wall.w, wall.h);
+          }     
 
          //tail
          tail.forEach((snakePart) => {
