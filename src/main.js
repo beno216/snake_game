@@ -4,9 +4,7 @@
 
 
 
-      //listeners 
-      document.addEventListener("keydown", keyPush);
-
+    
       //img
       const appleImg = new Image();
        appleImg.src = "img/apple.png";
@@ -351,6 +349,7 @@ function generateWallObject() {
        }
       
         }
+         document.addEventListener("keydown", keyPush);
        //grid
        function drawGrid() {
         for (let i = 0; i < titleCountX; i++) {
